@@ -3,7 +3,8 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from nylas import Client
-from nylas.models import Message, Folder as NylasFolder
+from nylas.models.messages import Message
+from nylas.models.folders import Folder as NylasFolder
 from ..models.email import Email, Attachment
 from ..models.folder import Folder
 from ..providers.base import EmailProvider
