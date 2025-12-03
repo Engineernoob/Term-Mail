@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from nylas import APIClient
+from nylas import Client
 from nylas.models import Message, Folder as NylasFolder
 from ..models.email import Email, Attachment
 from ..models.folder import Folder
@@ -15,7 +15,7 @@ class NylasProvider(EmailProvider):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.client: Optional[APIClient] = None
+        self.client: Optional[Client] = None
         self.grant_id: Optional[str] = None
     
     async def connect(self) -> bool:
@@ -25,7 +25,8 @@ class NylasProvider(EmailProvider):
             if not access_token:
                 return False
             
-            self.client = APIClient(
+            # Nylas SDK v6 uses Client with api_key parameter
+            self.client = Client(
                 api_key=self.config.get("api_key"),
                 api_uri=self.config.get("api_uri", "https://api.nylas.com")
             )
@@ -178,6 +179,8 @@ class NylasProvider(EmailProvider):
         
         try:
             folders = self.client.folders.list(identifier=self.grant_id)
+            # Check if folders is a list or has a data attribute
+            folder_list = folders.data if hasattr(folders, 'data') else folders if isinstance(folders, list) else []
             return [
                 Folder(
                     name=folder.name,
@@ -186,7 +189,7 @@ class NylasProvider(EmailProvider):
                     unread_count=getattr(folder, 'unread_count', 0),
                     total_count=getattr(folder, 'total_count', 0)
                 )
-                for folder in folders.data
+                for folder in folder_list
             ]
         except Exception as e:
             print(f"Error getting folders: {e}")
@@ -248,7 +251,13 @@ class NylasProvider(EmailProvider):
                 query_params=query_params
             )
             
-            return [self._nylas_to_email(msg) for msg in messages.data]
+            # Check if messages is a list or has a data attribute
+            if hasattr(messages, 'data'):
+                return [self._nylas_to_email(msg) for msg in messages.data]
+            elif isinstance(messages, list):
+                return [self._nylas_to_email(msg) for msg in messages]
+            else:
+                return []
         except Exception as e:
             print(f"Error searching emails: {e}")
             return []
